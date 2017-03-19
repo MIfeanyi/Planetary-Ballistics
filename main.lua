@@ -20,8 +20,6 @@ smallFont = love.graphics.newFont("whitrabt.ttf",16)
 universe = Phys.n(1e2)
 bg = nil
 pause = true
-gameover = false
-winner = ''
 
 function shallowcopy(orig)
     local orig_type = type(orig)
@@ -91,11 +89,12 @@ function draw_rockets(num, x,y, w,h)
     draw_rocket(x,y,w,h)
     x = x+w+ts
   end
-  if player.selected.create>0 then
-    local hh = h*player.selected.create/1000
-    love.graphics.rectangle('fill', x, y-hh, w, hh)
-    love.graphics.rectangle('line', x, y-hh, w, hh)
-
+  if player.selected~=nil then
+    if player.selected.create>0 then
+      local hh = h*player.selected.create/1000
+      love.graphics.rectangle('fill', x, y-hh, w, hh)
+      love.graphics.rectangle('line', x, y-hh, w, hh)
+    end
   end
 end
 
@@ -129,24 +128,10 @@ function love.draw()
     body:draw()
   end
   love.graphics.pop()
-  if gameover then
+  if pause then
     love.graphics.setColor(0,0,0,180)
     love.graphics.rectangle('fill', 0, 0, screen.w, screen.h)
     love.graphics.setColor(255,255,255)
-    love.graphics.setFont(bigFont)
-    local string="Game Over"
-    local w = bigFont:getWidth(string)
-    love.graphics.print(string,screen.cx-w/2,screen.cy-bfh/2)
-    string = "The Winner is: "..winner.."!"
-    w = smallFont:getWidth(string)
-    love.graphics.setFont(smallFont)
-    love.graphics.print(string,screen.cx-w/2,screen.cy+bfh/2+sfh/2)
-
-  elseif pause then
-    love.graphics.setColor(0,0,0,180)
-    love.graphics.rectangle('fill', 0, 0, screen.w, screen.h)
-    love.graphics.setColor(255,255,255)
-
     
     love.graphics.setFont(bigFont)
     local string="Pause"
@@ -156,24 +141,15 @@ function love.draw()
     w = smallFont:getWidth(string)
     love.graphics.setFont(smallFont)
     love.graphics.print(string,screen.cx-w/2,screen.cy+bfh/2+sfh/2)
-  
   end
-  
 end
 
 function love.update(dt)
-  if not pause and not gameover then
+  if not pause then
     universe:update(dt)
     local r = ai:update(dt)
     if r~=nil then
         universe.bodies[#universe.bodies+1]=r
-    end
-    if player:points()==0 then
-	gameover = true
-	winner = ai.name
-    elseif ai:points()==0 then 
-	gameover = true
-	winner = player.name
     end
   end
 end
@@ -188,21 +164,22 @@ function love.mousepressed(x, y, button, isTouch)
     if player.selected~= nil then
       cx = cx +player.selected.position.x
       cy = cy + player.selected.position.y
-    end
-    for _,p in pairs(player.bodies) do
-      if p~=nil and p ~= player.selected and p.points>0 and p:clicked(cx,cy) then
-        if player.selected ~= nil then
-          player.selected.selected = false
+    
+      for _,p in pairs(player.bodies) do
+        if p~=nil and p ~= player.selected and p.points>0 and p:clicked(cx,cy) then
+          if player.selected ~= nil then
+            player.selected.selected = false
+          end
+          p.selected = true
+          player.selected = p
+          return
         end
-        p.selected = true
-        player.selected = p
-        return
       end
-    end
-    if player.selected~=nil and player.selected.rockets>0 then
-      player.launching.status = true
-      player.launching.x = (x - screen.cx)
-      player.launching.y =  (y - screen.cy)
+      if player.selected.rockets>0 then
+        player.launching.status = true
+        player.launching.x = (x - screen.cx)
+        player.launching.y =  (y - screen.cy)
+      end
     end
   elseif button == 2 and   player.launching.status then
     player.launching.status = false
